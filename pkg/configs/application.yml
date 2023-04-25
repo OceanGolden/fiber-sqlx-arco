@@ -1,0 +1,23 @@
+server:
+  host: 0.0.0.0
+  port: 8080
+
+redis:
+  host: localhost
+  port: 5678
+
+datasource:
+  driver: mysql
+  host: 172.17.0.2
+  port: 3306
+  username: root
+  password: 123456
+  charset: utf8mb4
+  name: fiber-arco-admin
+
+jwt:
+  secret-key: fiber-arco
+  secret-key-expire-minutes: 30
+  refresh-key: fiber-refresh
+  refresh-key-expire-hours: 12
+

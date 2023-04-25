@@ -1,0 +1,117 @@
+package role_menu
+
+import (
+	"errors"
+	"fiber-sqlx-arco/pkg/global"
+	sq "github.com/Masterminds/squirrel"
+	"github.com/jmoiron/sqlx"
+)
+
+type Repository interface {
+	GetCount(where *WhereParams) (uint64, error)
+	FindAll(where *WhereParams) ([]*RoleMenu, error)
+	CreateBatch(req []*RoleMenu) error
+	Delete(req *DeleteRequest) error
+	GetCountWithTx(where *WhereParams, tx *sqlx.Tx) (uint64, error)
+	CreateBatchWithTx(req []*RoleMenu, tx *sqlx.Tx) error
+	DeleteWithTx(req *DeleteRequest, tx *sqlx.Tx) error
+}
+
+type repository struct {
+	db *sqlx.DB
+}
+
+func NewRepository(db *sqlx.DB) Repository {
+	return &repository{db: db}
+}
+
+func (r *repository) GetCount(where *WhereParams) (uint64, error) {
+	selectBuilder := sq.Select("Count(*)").From(Table)
+	roleIds := where.RoleIDs
+	if len(roleIds) > 0 {
+		selectBuilder = selectBuilder.Where(sq.Eq{"role_id": roleIds})
+	}
+	sql, args, _ := selectBuilder.ToSql()
+	var count uint64
+	err := r.db.Get(&count, sql, args...)
+	return count, err
+}
+
+func (r *repository) FindAll(where *WhereParams) ([]*RoleMenu, error) {
+	selectBuilder := sq.Select(
+		"role_id",
+		"menu_id",
+	).From(Table)
+	roleId := where.RoleID
+	roleIds := where.RoleIDs
+	if len(roleId) > 0 {
+		selectBuilder = selectBuilder.Where(sq.Eq{"role_id": roleId})
+	}
+	if len(roleIds) > 0 {
+		selectBuilder = selectBuilder.Where(sq.Eq{"role_id": roleIds})
+	}
+	sql, args, _ := selectBuilder.ToSql()
+	entities := []*RoleMenu{}
+	err := global.DB.Select(&entities, sql, args...)
+	return entities, err
+}
+
+func (r *repository) CreateBatch(entities []*RoleMenu) error {
+	insertBuilder := sq.Insert(Table).Columns("role_id", "menu_id", "created_at", "created_by")
+	for _, entity := range entities {
+		insertBuilder = insertBuilder.Values(entity.RoleID, entity.MenuID, entity.CreatedAt, entity.CreatedBy)
+	}
+	sql, args, _ := insertBuilder.ToSql()
+	result, err := r.db.Exec(sql, args...)
+	rowsAffected, err := result.RowsAffected()
+	if rowsAffected == 0 {
+		return errors.New(CreatedFail)
+	}
+	return err
+}
+
+func (r *repository) Delete(deleteReq *DeleteRequest) error {
+	sql, args, _ := sq.Delete(Table).Where(sq.Eq{"role_id": deleteReq.RoleID}).ToSql()
+	result, err := r.db.Exec(sql, args...)
+	rowsAffected, err := result.RowsAffected()
+	if rowsAffected == 0 {
+		return errors.New(DeletedFail)
+	}
+	return err
+}
+
+func (r *repository) GetCountWithTx(where *WhereParams, db *sqlx.Tx) (uint64, error) {
+	selectBuilder := sq.Select("Count(*)").From(Table)
+	roleIds := where.RoleIDs
+	if len(roleIds) > 0 {
+		selectBuilder = selectBuilder.Where(sq.Eq{"role_id": roleIds})
+	}
+	sql, args, _ := selectBuilder.ToSql()
+	var count uint64
+	err := db.Get(&count, sql, args...)
+	return count, err
+}
+
+func (r *repository) CreateBatchWithTx(entities []*RoleMenu, db *sqlx.Tx) error {
+	insertBuilder := sq.Insert(Table).Columns("role_id", "menu_id", "created_at", "created_by")
+	for _, entity := range entities {
+		insertBuilder = insertBuilder.Values(entity.RoleID, entity.MenuID, entity.CreatedAt, entity.CreatedBy)
+	}
+	sql, args, _ := insertBuilder.ToSql()
+	result, err := db.Exec(sql, args...)
+	rowsAffected, err := result.RowsAffected()
+	if rowsAffected == 0 {
+		return errors.New(CreatedFail)
+	}
+	return err
+}
+
+func (r *repository) DeleteWithTx(deleteReq *DeleteRequest, db *sqlx.Tx) error {
+	sql, args, _ := sq.Delete(Table).Where(sq.Eq{"role_id": deleteReq.RoleID}).ToSql()
+	result, err := db.Exec(sql, args...)
+	rowsAffected, err := result.RowsAffected()
+	if rowsAffected == 0 {
+		return errors.New(DeletedFail)
+	}
+	return err
+}
